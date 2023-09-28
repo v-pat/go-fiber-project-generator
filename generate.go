@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"text/template"
+	tmpl "vpat_codegen/templates"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -21,8 +23,9 @@ type Field struct {
 	Type string
 }
 
-type Tables struct {
-	Tables []StructDefinition `json:"tables"`
+type AppJson struct {
+	AppName string             `json:"appName"`
+	Tables  []StructDefinition `json:"tables"`
 }
 
 // StructDefinition represents the data required for generating CRUD methods.
@@ -40,42 +43,17 @@ func main() {
 	app.Post("/generate", func(c *fiber.Ctx) error {
 		// Parse the incoming JSON data as a StructDefinition
 		var structDefs []StructDefinition
-		var tables Tables
-		if err := c.BodyParser(&tables); err != nil {
+		var appJson AppJson
+		if err := c.BodyParser(&appJson); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON"})
 		}
 
-		structDefs = tables.Tables
+		structDefs = appJson.Tables
 
 		// Parse the "database" query parameter
 		database := c.Query("database")
 		if database != "postgres" && database != "mysql" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid database type"})
-		}
-
-		err := os.MkdirAll("service", os.ModeDir)
-
-		if err != nil {
-			panic("Unable to create service dir")
-		}
-
-		err = os.MkdirAll("controller", os.ModeDir)
-		if err != nil {
-			panic("Unable to create controller dir")
-		}
-
-		err = os.MkdirAll("model", os.ModeDir)
-		if err != nil {
-			panic("Unable to create model dir")
-		}
-
-		err = os.MkdirAll("routes", os.ModeDir)
-		if err != nil {
-			panic("Unable to create model dir")
-		}
-		_, err = os.Create("routes/routes.go")
-		if err != nil {
-			panic("Unable to create routes file")
 		}
 
 		for _, structDef := range structDefs {
@@ -87,22 +65,22 @@ func main() {
 
 			// Generate CRUD methods and save in service package
 			serviceFileName := fmt.Sprintf("service/%s_service.go", strings.ToLower(structDef.StructName))
-			if err := generateServiceFile(serviceFileName, structDef, structCode, database); err != nil {
+			if err := generateServiceFile(serviceFileName, structDef, structCode, database, appJson.AppName); err != nil {
 				fmt.Sprintln(err.Error())
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate service file"})
 			}
 
 			// Generate controller methods and save in controller package
 			controllerFileName := fmt.Sprintf("controller/%s_controller.go", strings.ToLower(structDef.StructName))
-			if err := generateControllerFile(controllerFileName, structDef); err != nil {
+			if err := generateControllerFile(controllerFileName, structDef, appJson.AppName); err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate controller file"})
 			}
 
-			// Update routes.go to define API endpoints
-			err = updateRoutesFile(structDef, database)
-			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate routes file"})
-			}
+		}
+		// Update routes.go to define API endpoints
+		err := updateRoutesFile(structDefs, database)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate routes file"})
 		}
 
 		return c.JSON(fiber.Map{"message": "CRUD code generated and organized successfully"})
@@ -112,7 +90,51 @@ func main() {
 	app.Listen(":3000")
 }
 
-func updateRoutesFile(structDef StructDefinition, database string) error {
+func createFiles(name string) {
+	err := os.MkdirAll("generated", os.ModeDir)
+
+	if err != nil {
+		panic("Unable to create generated dir")
+	}
+
+	initCommand := exec.Command("go", "mod", "init", name)
+
+	initCommand.Dir = "/generated"
+	initCommand.Stdin = os.Stdin
+	initCommand.Stdout = os.Stdout
+
+	err = initCommand.Run()
+	if err != nil {
+		panic("Go mod init failed")
+	}
+
+	err = os.MkdirAll("service", os.ModeDir)
+
+	if err != nil {
+		panic("Unable to create service dir")
+	}
+
+	err = os.MkdirAll("controller", os.ModeDir)
+	if err != nil {
+		panic("Unable to create controller dir")
+	}
+
+	err = os.MkdirAll("model", os.ModeDir)
+	if err != nil {
+		panic("Unable to create model dir")
+	}
+
+	err = os.MkdirAll("routes", os.ModeDir)
+	if err != nil {
+		panic("Unable to create model dir")
+	}
+	_, err = os.Create("routes/routes.go")
+	if err != nil {
+		panic("Unable to create routes file")
+	}
+}
+
+func updateRoutesFile(structDefs []StructDefinition, database string) error {
 	routesFilePath := "routes/routes.go"
 
 	// Open the routes.go file for appending
@@ -123,16 +145,19 @@ func updateRoutesFile(structDef StructDefinition, database string) error {
 	defer routesFile.Close()
 
 	// Parse the routes template
-	tmpl, err := template.New("routes").Parse(routesTemplate)
+	tmpl, err := template.New("routes").Parse(tmpl.RoutesTemplate)
 	if err != nil {
 		return err
 	}
 
 	// Define data for the template
-	data := struct {
+	type structname struct {
 		StructName string
-	}{
-		StructName: structDef.StructName,
+	}
+	data := []structname{}
+
+	for _, structDef := range structDefs {
+		data = append(data, structname{StructName: structDef.StructName})
 	}
 
 	// Execute the template and write to the routes file
@@ -173,7 +198,7 @@ func generateStructFromJSON(jsonData map[string]interface{}, structName string) 
 	defer modelFile.Close()
 
 	// Parse the model template
-	tmpl, err := template.New("model").Parse(modelTemplate)
+	tmpl, err := template.New("model").Parse(tmpl.ModelTemplate)
 	if err != nil {
 		return "", err
 	}
@@ -210,7 +235,7 @@ func inferGoType(value interface{}) string {
 	return "interface{}"
 }
 
-func generateServiceFile(fileName string, structDef StructDefinition, structCode, database string) error {
+func generateServiceFile(fileName string, structDef StructDefinition, structCode, database string, appName string) error {
 
 	serviceFile, err := os.Create(fileName)
 	if err != nil {
@@ -219,17 +244,19 @@ func generateServiceFile(fileName string, structDef StructDefinition, structCode
 	defer serviceFile.Close()
 
 	// Parse the service template
-	tmpl, err := template.New("service").Parse(serviceTemplate)
+	tmpl, err := template.New("service").Parse(tmpl.ServiceTemplate)
 	if err != nil {
 		return err
 	}
 
 	// Define data for the template
 	data := struct {
+		AppName    string
 		StructName string
 		Database   string
 		StructCode string
 	}{
+		AppName:    appName,
 		StructName: structDef.StructName,
 		Database:   database,
 		StructCode: structCode,
@@ -243,7 +270,7 @@ func generateServiceFile(fileName string, structDef StructDefinition, structCode
 	return nil
 }
 
-func generateControllerFile(fileName string, structDef StructDefinition) error {
+func generateControllerFile(fileName string, structDef StructDefinition, appName string) error {
 	controllerFile, err := os.Create(fileName)
 	if err != nil {
 		return err
@@ -251,7 +278,7 @@ func generateControllerFile(fileName string, structDef StructDefinition) error {
 	defer controllerFile.Close()
 
 	// Parse the controller template
-	tmpl, err := template.New("controller").Parse(controllerTemplate)
+	tmpl, err := template.New("controller").Parse(tmpl.ControllerTemplate)
 	if err != nil {
 		return err
 	}
@@ -259,8 +286,10 @@ func generateControllerFile(fileName string, structDef StructDefinition) error {
 	// Define data for the template
 	data := struct {
 		StructName string
+		AppName    string
 	}{
 		StructName: structDef.StructName,
+		AppName:    appName,
 	}
 
 	// Execute the template and write to the controller file
@@ -270,172 +299,3 @@ func generateControllerFile(fileName string, structDef StructDefinition) error {
 
 	return nil
 }
-
-const routesTemplate = `
-package routes
-
-import (
-    "github.com/gofiber/fiber/v2"
-    "myapp/controller"
-)
-
-// Setup{{.StructName}}Routes sets up routes for the {{.StructName}} resource.
-func Setup{{.StructName}}Routes(app *fiber.App, {{.StructName}}Controller *controller.{{.StructName}}Controller) {
-    // Define routes for {{.StructName}} resource
-    group := app.Group("/{{.StructName}}")
-
-    // Create a {{.StructName}}
-    group.Post("/", {{.StructName}}Controller.Create{{.StructName}})
-
-    // Get a {{.StructName}} by ID
-    group.Get("/:id", {{.StructName}}Controller.Get{{.StructName}}ByID)
-
-    // Update a {{.StructName}} by ID
-    group.Put("/:id", {{.StructName}}Controller.Update{{.StructName}})
-
-    // Delete a {{.StructName}} by ID
-    group.Delete("/:id", {{.StructName}}Controller.Delete{{.StructName}}ByID)
-}
-`
-
-// Define a model template for generating the struct code in the model file.
-const modelTemplate = `package model
-
-// {{.StructName}} represents the {{.StructName}} struct.
-type {{.StructName}} struct {
-{{range .Fields}}
-	{{.Name}} {{.Type}} ` + "`json:\"{{.Name}}\"`" +
-	`{{end}}
-}`
-
-const controllerTemplate = `
-package controller
-
-import (
-	"github.com/gofiber/fiber/v2"
-	"myapp/model"
-	"myapp/service"
-)
-
-// {{.StructName}}Controller handles requests for {{.StructName}}.
-type {{.StructName}}Controller struct {
-	Service *service.{{.StructName}}Service
-}
-
-// Create{{.StructName}} creates a new {{.StructName}}.
-func (c *{{.StructName}}Controller) Create{{.StructName}}(ctx *fiber.Ctx) error {
-	var {{.StructName}} model.{{.StructName}}
-	if err := ctx.BodyParser(&{{.StructName}}); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
-	}
-
-	err := c.Service.Create{{.StructName}}(&{{.StructName}})
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create {{.StructName}}"})
-	}
-
-	return ctx.Status(fiber.StatusCreated).JSON({{.StructName}})
-}
-
-// Get{{.StructName}}ByID retrieves a {{.StructName}} by ID.
-func (c *{{.StructName}}Controller) Get{{.StructName}}ByID(ctx *fiber.Ctx) error {
-	id := ctx.Params("id")
-	{{.StructName}}, err := c.Service.Get{{.StructName}}ByID(id)
-	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "{{.StructName}} not found"})
-	}
-
-	return ctx.JSON({{.StructName}})
-}
-
-// Update{{.StructName}} updates an existing {{.StructName}} by ID.
-func (c *{{.StructName}}Controller) Update{{.StructName}}(ctx *fiber.Ctx) error {
-	id := ctx.Params("id")
-	var updated{{.StructName}} model.{{.StructName}}
-	if err := ctx.BodyParser(&updated{{.StructName}}); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
-	}
-
-	err := c.Service.Update{{.StructName}}(id, &updated{{.StructName}})
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update {{.StructName}}"})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "{{.StructName}} updated"})
-}
-
-// Delete{{.StructName}}ByID deletes a {{.StructName}} by ID.
-func (c *{{.StructName}}Controller) Delete{{.StructName}}ByID(ctx *fiber.Ctx) error {
-	id := ctx.Params("id")
-	err := c.Service.Delete{{.StructName}}ByID(id)
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete {{.StructName}}"})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "{{.StructName}} deleted"})
-}
-
-`
-
-const serviceTemplate = `package service
-
-import (
-    "database/sql"
-    "fmt"
-    "myapp/model"
-)
-
-// {{.StructName}}Service represents the service for {{.StructName}}.
-type {{.StructName}}Service struct {
-    DB *sql.DB
-}
-
-{{.StructCode}}
-
-// Create{{.StructName}} inserts a new {{.StructName}} record into the database.
-func (s *{{.StructName}}Service) Create{{.StructName}}({{.StructName}} *model.{{.StructName}}) error {
-    query := dbQuery("{{.Database}}", "insert", "{{.StructName}}s")
-    // Execute the query to insert {{.StructName}} into the database
-    fmt.Println("Executing query:", query)
-    _, err := s.DB.Exec(query)
-    if err != nil {
-        return err
-    }
-    return nil
-}
-
-// Get{{.StructName}} retrieves a {{.StructName}} record from the database by ID.
-func (s *{{.StructName}}Service) Get{{.StructName}}(id int) (*model.{{.StructName}}, error) {
-    query := dbQuery("{{.Database}}", "select", "{{.StructName}}s")
-    // Execute the query to retrieve {{.StructName}} from the database
-    fmt.Println("Executing query:", query)
-    // Implement query execution and scanning here
-    {{.StructName}} := &model.{{.StructName}}{} // Replace with actual retrieval logic
-    return {{.StructName}}, nil
-}
-
-// Update{{.StructName}} updates an existing {{.StructName}} record in the database.
-func (s *{{.StructName}}Service) Update{{.StructName}}({{.StructName}} *model.{{.StructName}}) error {
-    query := dbQuery("{{.Database}}", "update", "{{.StructName}}s")
-    // Execute the query to update {{.StructName}} in the database
-    fmt.Println("Executing query:", query)
-    _, err := s.DB.Exec(query)
-    if err != nil {
-        return err
-    }
-    return nil
-}
-
-// Delete{{.StructName}} deletes a {{.StructName}} record from the database by ID.
-func (s *{{.StructName}}Service) Delete{{.StructName}}(id int) error {
-    query := dbQuery("{{.Database}}", "delete", "{{.StructName}}s")
-    // Execute the query to delete {{.StructName}} from the database
-    fmt.Println("Executing query:", query)
-    _, err := s.DB.Exec(query)
-    if err != nil {
-        return err
-    }
-    return nil
-}
-
-`
