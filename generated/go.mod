@@ -1,10 +1,10 @@
-module vpat_codegen
+module vpat
 
 go 1.20
 
 require (
 	github.com/gofiber/fiber/v2 v2.49.2
-	golang.org/x/text v0.8.0
+	github.com/lib/pq v1.10.9
 )
 
 require (

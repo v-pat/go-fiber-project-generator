@@ -3,24 +3,23 @@ package templates
 const ServiceTemplate = `package service
 
 import (
-    "database/sql"
+    "encoding/json"
     "fmt"
+    "{{.AppName}}/databases"
     "{{.AppName}}/model"
 )
-
-// {{.StructName}}Service represents the service for {{.StructName}}.
-type {{.StructName}}Service struct {
-    DB *sql.DB
-}
 
 {{.StructCode}}
 
 // Create{{.StructName}} inserts a new {{.StructName}} record into the database.
-func (s *{{.StructName}}Service) Create{{.StructName}}({{.StructName}} *model.{{.StructName}}) error {
-    query := dbQuery("{{.Database}}", "insert", "{{.StructName}}s")
+func  Create{{.StructName}}({{.StructName}}s model.{{.StructNameTitlecase}}) error {
+    var {{.StructName}}sMap map[string]interface{}
+    {{.StructName}}, _ := json.Marshal({{.StructName}}s)
+    json.Unmarshal({{.StructName}}, &{{.StructName}}sMap)
+    query := databases.DbQuery("INSERT", "{{.StructName}}",{{.StructName}}sMap)
     // Execute the query to insert {{.StructName}} into the database
     fmt.Println("Executing query:", query)
-    _, err := s.DB.Exec(query)
+    _, err := databases.{{.DBName}}.Exec(query)
     if err != nil {
         return err
     }
@@ -28,21 +27,29 @@ func (s *{{.StructName}}Service) Create{{.StructName}}({{.StructName}} *model.{{
 }
 
 // Get{{.StructName}} retrieves a {{.StructName}} record from the database by ID.
-func (s *{{.StructName}}Service) Get{{.StructName}}(id int) (*model.{{.StructName}}, error) {
-    query := dbQuery("{{.Database}}", "select", "{{.StructName}}s")
+func Get{{.StructName}}ByID(id int) (model.{{.StructNameTitlecase}}, error) {
+    query := databases.DbQuery("SELECTBYID", "{{.StructName}}",map[string]interface{}{"id":id})
     // Execute the query to retrieve {{.StructName}} from the database
     fmt.Println("Executing query:", query)
+    {{.StructName}} := model.{{.StructNameTitlecase}}{} // Replace with actual retrieval logic
+    res, err := databases.{{.DBName}}.Query(query)
+    if err != nil {
+        return {{.StructName}},err
+    }
     // Implement query execution and scanning here
-    {{.StructName}} := &model.{{.StructName}}{} // Replace with actual retrieval logic
+    res.Scan({{.StructName}})
     return {{.StructName}}, nil
 }
 
 // Update{{.StructName}} updates an existing {{.StructName}} record in the database.
-func (s *{{.StructName}}Service) Update{{.StructName}}({{.StructName}} *model.{{.StructName}}) error {
-    query := dbQuery("{{.Database}}", "update", "{{.StructName}}s")
+func Update{{.StructName}}({{.StructName}}s model.{{.StructNameTitlecase}}) error {
+    var {{.StructName}}sMap map[string]interface{}
+    {{.StructName}}, _ := json.Marshal({{.StructName}}s)
+    json.Unmarshal({{.StructName}}, &{{.StructName}}sMap)
+    query := databases.DbQuery("{UPDATE","{{.StructName}}s", {{.StructName}}sMap)
     // Execute the query to update {{.StructName}} in the database
     fmt.Println("Executing query:", query)
-    _, err := s.DB.Exec(query)
+    _, err := databases.{{.DBName}}.Exec(query)
     if err != nil {
         return err
     }
@@ -50,11 +57,11 @@ func (s *{{.StructName}}Service) Update{{.StructName}}({{.StructName}} *model.{{
 }
 
 // Delete{{.StructName}} deletes a {{.StructName}} record from the database by ID.
-func (s *{{.StructName}}Service) Delete{{.StructName}}(id int) error {
-    query := dbQuery("{{.Database}}", "delete", "{{.StructName}}s")
+func Delete{{.StructName}}ByID(id int) error {
+    query := databases.DbQuery("DELETE", "{{.StructName}}", map[string]interface{}{"id":id})
     // Execute the query to delete {{.StructName}} from the database
     fmt.Println("Executing query:", query)
-    _, err := s.DB.Exec(query)
+    _, err := databases.{{.DBName}}.Exec(query)
     if err != nil {
         return err
     }

@@ -1,6 +1,4 @@
-package templates
 
-const DatabaseConnectionTemplate = `
 package databases
 
 import (
@@ -8,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	_ "{{.DatabaseDriver}}" // Import the database driver package
+	_ "github.com/go-sql-driver/mysql" // Import the database driver package
 )
 
-var {{.DBName}} *sql.DB
+var Vpat *sql.DB
 
 
 // DbQuery generates SQL queries (INSERT, UPDATE, DELETE) for a given table name and values.
@@ -75,38 +73,38 @@ func generateSelectByIDQuery(tableName string, values map[string]interface{}) st
 
 func createDatabase() error {
 	// Define the database connection parameters for creating the database
-	dbHost := "{{.DBHost}}"
-	dbPort := "{{.DBPort}}"
-	dbUser := "{{.DBUser}}"
-	dbPassword := "{{.DBPassword}}"
-	dbName := "{{.DBName}}"
+	dbHost := "localhost"
+	dbPort := "3306"
+	dbUser := "root"
+	dbPassword := "root"
+	dbName := "Vpat"
 
 	// Connect to the database server without specifying a database name
-	dbURL := fmt.Sprintf("{{.DBURLFormat}}", dbUser, dbPassword, dbHost, dbPort, dbName)
-	db, err := sql.Open("{{.DatabaseDriverName}}", dbURL)
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
+	db, err := sql.Open("mysql", dbURL)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
 	// Create the database
-	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS {{.DBName}}")
+	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS Vpat")
 	return err
 }
 
 func ConnectToDatabase() (*sql.DB, error) {
 	// Define the database connection parameters
-	dbHost := "{{.DBHost}}"
-	dbPort := "{{.DBPort}}"
-	dbName := "{{.DBName}}"
-	dbUser := "{{.DBUser}}"
-	dbPassword := "{{.DBPassword}}"
+	dbHost := "localhost"
+	dbPort := "3306"
+	dbName := "Vpat"
+	dbUser := "root"
+	dbPassword := "root"
 	
 	// Construct the database connection URL
-	dbURL := fmt.Sprintf("{{.DBURLFormat}}", dbUser, dbPassword, dbHost, dbPort, dbName)
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	// Open a database connection
-	db, err := sql.Open("{{.DatabaseDriverName}}", dbURL)
+	db, err := sql.Open("mysql", dbURL)
 	if err != nil {
 		return nil, err
 	}
@@ -120,26 +118,3 @@ func ConnectToDatabase() (*sql.DB, error) {
 }
 
 
-`
-
-// func main() {
-// 	// Create the database
-// 	err := createDatabase()
-// 	if err != nil {
-// 		fmt.Println("Failed to create the database:", err)
-// 		return
-// 	}
-// 	fmt.Println("Database created successfully.")
-
-// 	// Create and connect to the database
-// 	db, err := connectToDatabase()
-// 	if err != nil {
-// 		fmt.Println("Failed to connect to the database:", err)
-// 		return
-// 	}
-// 	defer db.Close()
-
-// 	fmt.Println("Connected to the database successfully")
-
-// 	// Now, you can use 'db' to perform database operations
-// }

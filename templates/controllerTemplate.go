@@ -4,24 +4,20 @@ const ControllerTemplate = `
 package controller
 
 import (
+	"strconv"
 	"github.com/gofiber/fiber/v2"
 	"{{.AppName}}/model"
 	"{{.AppName}}/service"
 )
 
-// {{.StructName}}Controller handles requests for {{.StructName}}.
-type {{.StructName}}Controller struct {
-	Service *service.{{.StructName}}Service
-}
-
 // Create{{.StructName}} creates a new {{.StructName}}.
-func (c *{{.StructName}}Controller) Create{{.StructName}}(ctx *fiber.Ctx) error {
-	var {{.StructName}} model.{{.StructName}}
+func Create{{.StructName}}(ctx *fiber.Ctx) error {
+	var {{.StructName}} model.{{.StructNameTitleCase}}
 	if err := ctx.BodyParser(&{{.StructName}}); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	err := c.Service.Create{{.StructName}}(&{{.StructName}})
+	err := service.Create{{.StructName}}({{.StructName}})
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create {{.StructName}}"})
 	}
@@ -30,9 +26,13 @@ func (c *{{.StructName}}Controller) Create{{.StructName}}(ctx *fiber.Ctx) error 
 }
 
 // Get{{.StructName}}ByID retrieves a {{.StructName}} by ID.
-func (c *{{.StructName}}Controller) Get{{.StructName}}ByID(ctx *fiber.Ctx) error {
+func Get{{.StructName}}ByID(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
-	{{.StructName}}, err := c.Service.Get{{.StructName}}ByID(id)
+	intId,err := strconv.Atoi(id)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Id not valid"})
+	}
+	{{.StructName}}, err := service.Get{{.StructName}}ByID(intId)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "{{.StructName}} not found"})
 	}
@@ -41,14 +41,14 @@ func (c *{{.StructName}}Controller) Get{{.StructName}}ByID(ctx *fiber.Ctx) error
 }
 
 // Update{{.StructName}} updates an existing {{.StructName}} by ID.
-func (c *{{.StructName}}Controller) Update{{.StructName}}(ctx *fiber.Ctx) error {
-	id := ctx.Params("id")
-	var updated{{.StructName}} model.{{.StructName}}
+func Update{{.StructName}}(ctx *fiber.Ctx) error {
+	//id := ctx.Params("id")
+	var updated{{.StructName}} model.{{.StructNameTitleCase}}
 	if err := ctx.BodyParser(&updated{{.StructName}}); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	err := c.Service.Update{{.StructName}}(id, &updated{{.StructName}})
+	err := service.Update{{.StructName}}(updated{{.StructName}})
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update {{.StructName}}"})
 	}
@@ -57,9 +57,13 @@ func (c *{{.StructName}}Controller) Update{{.StructName}}(ctx *fiber.Ctx) error 
 }
 
 // Delete{{.StructName}}ByID deletes a {{.StructName}} by ID.
-func (c *{{.StructName}}Controller) Delete{{.StructName}}ByID(ctx *fiber.Ctx) error {
+func Delete{{.StructName}}ByID(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
-	err := c.Service.Delete{{.StructName}}ByID(id)
+	intId,err := strconv.Atoi(id)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Id not valid"})
+	}
+	err = service.Delete{{.StructName}}ByID(intId)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete {{.StructName}}"})
 	}
