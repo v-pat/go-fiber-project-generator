@@ -6,6 +6,6 @@ const ModelTemplate = `package model
 // {{.StructName}} represents the {{.StructName}} struct.
 type {{.StructName}} struct {
 {{range .Fields}}
-	{{.Name}} {{.Type}} ` + "`json:\"{{.Name}}\"`" +
+	{{.TitlecasedName}} {{.Type}} ` + "`json:\"{{.Name}}\"`" +
 	`{{end}}
 }`

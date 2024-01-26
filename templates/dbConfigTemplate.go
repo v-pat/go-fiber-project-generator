@@ -34,16 +34,28 @@ func DbQuery( operation string, tableName string, values map[string]interface{})
 
 func generateInsertQuery(tableName string, values map[string]interface{}) string {
     columns := []string{}
-    placeholders := []string{}
-    var args []interface{}
+    args := []string{}
 
     for column, value := range values {
         columns = append(columns, column)
-        placeholders = append(placeholders, "?")
         args = append(args, value)
+
+		if valueType == "string" {
+			value = "'" + value.(string) + "'"
+		}
+		if valueType == "float64" {
+			value = strconv.FormatFloat(value.(float64), 'f', -1, 64)
+		}
+		if valueType == "int64" {
+			value = strconv.FormatInt(value.(int64), 10)
+		}
+		if valueType == "bool" {
+			value = strconv.FormatBool(value.(bool))
+		}
+		args = append(args, value.(string))
     }
 
-    return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(columns, ", "), strings.Join(placeholders, ", "))
+    return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tableName, strings.Join(columns, ", "), strings.Join(args, ", "))
 }
 
 func generateUpdateQuery(tableName string, values map[string]interface{}) string {
@@ -115,6 +127,10 @@ func ConnectToDatabase() (*sql.DB, error) {
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}
+
+	{{.DBName}} = db
+
+	
 
 	return db, nil
 }
