@@ -55,14 +55,16 @@ func GenerateStructFromJSON(jsonData map[string]interface{}, structName string) 
 
 	// Iterate through JSON fields and generate struct fields
 	for fieldName, fieldValue := range jsonData {
-		fieldType := inferGoType(fieldValue)
-		structField := fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
-		structVar.Fields = append(structVar.Fields, field{
-			Name:           fieldName,
-			Type:           fieldType,
-			TitlecasedName: cases.Title(language.English).String(fieldName),
-		})
-		structCode += structField
+		if strings.ToLower(fieldName) != "id" {
+			fieldType := inferGoType(fieldValue)
+			structField := fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, fieldType, fieldName)
+			structVar.Fields = append(structVar.Fields, field{
+				Name:           fieldName,
+				Type:           fieldType,
+				TitlecasedName: cases.Title(language.English).String(fieldName),
+			})
+			structCode += structField
+		}
 	}
 
 	// Define the file path for the model file

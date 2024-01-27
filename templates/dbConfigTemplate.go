@@ -26,7 +26,7 @@ func ConnectToDb() {
 	dbPassword := "{{.DBPassword}}"
 	
 	// Construct the database connection URL
-	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", dbUser, dbPassword, dbHost, dbPort, dbName,"charset=utf8mb4&parseTime=True")
 
     var err error
 

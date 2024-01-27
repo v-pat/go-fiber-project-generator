@@ -22,7 +22,7 @@ func Create{{.StructName}}(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create {{.StructName}}"})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON({{.StructName}})
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "{{.StructName}} created."})
 }
 
 // Get{{.StructName}}ByID retrieves a {{.StructName}} by ID.
