@@ -36,23 +36,42 @@ go-fiber-project-generator is a template-based code generator for creating simpl
 
 ## Usage
 
-Generate new project by sending post request to ```http://localhost:3000/generate?database=mysql```.
-Request's body should be in following format:
-```
-{
-    "appName":"go-fiber-app",
+- Generate new project by sending post request to ```http://localhost:3000/generate?database=mysql```. Request's body should be in following format:
+  ```
+  {
+    "appName":"<APP_NAME>",
     "tables":[
         {
-            "name":"table_1",
+            "name":"<TABLE_NAME>",
             "columns":{
-                "id":1,
-                "name":"vpat",
-                "role":"SDE"
+                "FIRST_COLUMN_NAME":<VALUE>,
+                  ...
+                "NTH_COLUMN_NAME":<VALUE>,
             },
-            "endpoint":"table_1"
+            "endpoint":"<ENDPOINT_FOR_THIS_TABLE>"
         },
     ]
-}
-```
+  }
+  ```
+- In columns object ```VALUE``` denotes a data expected to be in the row of the column or what is type of that column.
+  
+- For example if a column would have int type values in it, then columns object would be like :
+  ```
+  "columns":{
+      "id":1,
+  },
+  ```
+  
+- Similarly if columns would have string or boolean type values in it, then columns object would be like:
+  ```
+  "columns":{
+      "id":1,
+      "name":"vpat",
+      "is_developer":true,
+  },
+  ```
+  
+- Please note that the values given in front of column names, will be used to only determine type of column and will not be added in database as first row of table. 
+
 
 
