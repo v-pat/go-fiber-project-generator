@@ -3,8 +3,7 @@ package templates
 const ServiceTemplate = `package service
 
 import (
-    "encoding/json"
-    "fmt"
+	"errors"
     "{{.AppName}}/databases"
     "{{.AppName}}/model"
 )
@@ -12,59 +11,46 @@ import (
 {{.StructCode}}
 
 // Create{{.StructName}} inserts a new {{.StructName}} record into the database.
-func  Create{{.StructName}}({{.StructName}}s model.{{.StructNameTitlecase}}) error {
-    var {{.StructName}}sMap map[string]interface{}
-    {{.StructName}}, _ := json.Marshal({{.StructName}}s)
-    json.Unmarshal({{.StructName}}, &{{.StructName}}sMap)
-    query := databases.DbQuery("INSERT", "{{.StructName}}",{{.StructName}}sMap)
-    // Execute the query to insert {{.StructName}} into the database
-    fmt.Println("Executing query:", query)
-    _, err := databases.{{.DBName}}.Exec(query)
-    if err != nil {
-        return err
+func  Create{{.StructName}}({{.StructName}} model.{{.StructNameTitlecase}}) error {
+    result := databases.Database.Create(&{{.StructName}})
+    if result.RowsAffected == 0 || result.Error != nil {
+        return errors.New("Unable to create {{.StructName}}. Please try again.")
     }
     return nil
 }
 
 // Get{{.StructName}} retrieves a {{.StructName}} record from the database by ID.
 func Get{{.StructName}}ByID(id int) (model.{{.StructNameTitlecase}}, error) {
-    query := databases.DbQuery("SELECTBYID", "{{.StructName}}",map[string]interface{}{"id":id})
-    // Execute the query to retrieve {{.StructName}} from the database
-    fmt.Println("Executing query:", query)
-    {{.StructName}} := model.{{.StructNameTitlecase}}{} // Replace with actual retrieval logic
-    res, err := databases.{{.DBName}}.Query(query)
-    if err != nil {
-        return {{.StructName}},err
+
+    var {{.StructName}} model.{{.StructNameTitlecase}}
+    result := databases.Database.Find(&{{.StructName}}, id)
+
+    if result.RowsAffected == 0 || result.Error != nil {
+        return {{.StructName}},errors.New("{{.StructName}} not found.")
     }
-    // Implement query execution and scanning here
-    res.Scan({{.StructName}})
-    return {{.StructName}}, nil
+
+    return {{.StructName}},nil
 }
 
 // Update{{.StructName}} updates an existing {{.StructName}} record in the database.
-func Update{{.StructName}}({{.StructName}}s model.{{.StructNameTitlecase}}) error {
-    var {{.StructName}}sMap map[string]interface{}
-    {{.StructName}}, _ := json.Marshal({{.StructName}}s)
-    json.Unmarshal({{.StructName}}, &{{.StructName}}sMap)
-    query := databases.DbQuery("{UPDATE","{{.StructName}}s", {{.StructName}}sMap)
-    // Execute the query to update {{.StructName}} in the database
-    fmt.Println("Executing query:", query)
-    _, err := databases.{{.DBName}}.Exec(query)
-    if err != nil {
-        return err
+func Update{{.StructName}}({{.StructName}} model.{{.StructNameTitlecase}}, id string) error {
+    result := databases.Database.Where("id = ?", id).Updates(&{{.StructName}})
+    if result.RowsAffected == 0 || result.Error != nil {
+        return errors.New("Unable to update {{.StructName}}. Please try again.")
     }
     return nil
 }
 
 // Delete{{.StructName}} deletes a {{.StructName}} record from the database by ID.
 func Delete{{.StructName}}ByID(id int) error {
-    query := databases.DbQuery("DELETE", "{{.StructName}}", map[string]interface{}{"id":id})
-    // Execute the query to delete {{.StructName}} from the database
-    fmt.Println("Executing query:", query)
-    _, err := databases.{{.DBName}}.Exec(query)
-    if err != nil {
-        return err
+    var {{.StructName}} model.{{.StructNameTitlecase}}
+
+    result := databases.Database.Delete(&{{.StructName}}, id)
+
+    if result.RowsAffected == 0 || result.Error != nil {
+        return errors.New("Unable to delete {{.StructName}}. Please try again.")
     }
+
     return nil
 }
 

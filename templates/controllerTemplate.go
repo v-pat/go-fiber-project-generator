@@ -42,13 +42,13 @@ func Get{{.StructName}}ByID(ctx *fiber.Ctx) error {
 
 // Update{{.StructName}} updates an existing {{.StructName}} by ID.
 func Update{{.StructName}}(ctx *fiber.Ctx) error {
-	//id := ctx.Params("id")
+	id := ctx.Params("id")
 	var updated{{.StructName}} model.{{.StructNameTitleCase}}
 	if err := ctx.BodyParser(&updated{{.StructName}}); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	err := service.Update{{.StructName}}(updated{{.StructName}})
+	err := service.Update{{.StructName}}(updated{{.StructName}},id)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update {{.StructName}}"})
 	}

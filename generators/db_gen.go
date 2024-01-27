@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"os"
 	"text/template"
+	"vpat_codegen/model"
 	tmpl "vpat_codegen/templates"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // DatabaseConnectionParams represents the parameters required for generating database connection code.
@@ -17,6 +21,8 @@ type DatabaseConnectionParams struct {
 	DBPassword         string
 	DBURLFormat        string
 	DatabaseDriverName string
+	StructNames        []model.StructDefinition
+	AppName            string
 }
 
 // GenerateDatabaseConnectionCode generates code for connecting to a database (PostgreSQL or MySQL) and writes it to a file.
@@ -42,16 +48,22 @@ func generateDatabaseConnectionCode(params DatabaseConnectionParams, fileName st
 	return nil
 }
 
-func CreateDatabase(database string, appName string) error {
+func CreateDatabase(database string, dbName string, structDefs []model.StructDefinition, appName string) error {
+	for i, structDef := range structDefs {
+		structDefs[i].StructName = cases.Title(language.English).String(structDef.StructName)
+	}
+
 	params := DatabaseConnectionParams{
 		DatabaseDriver:     "github.com/lib/pq",
 		DBHost:             "localhost",
 		DBPort:             "5432",
-		DBName:             appName,
+		DBName:             dbName,
 		DBUser:             "myuser",
 		DBPassword:         "mypassword",
 		DBURLFormat:        "postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		DatabaseDriverName: "postgres",
+		StructNames:        structDefs,
+		AppName:            appName,
 	}
 
 	if database == "postgres" {
@@ -69,7 +81,9 @@ func CreateDatabase(database string, appName string) error {
 		params.DBUser = "root"
 		params.DBPassword = "root"
 		params.DBURLFormat = "%s:%s@tcp(%s:%s)/%s"
-		params.DBName = appName
+		params.DBName = dbName
+		params.StructNames = structDefs
+		params.AppName = appName
 
 		err := generateDatabaseConnectionCode(params, "mysql_connection.go")
 		if err != nil {

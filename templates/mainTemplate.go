@@ -15,11 +15,7 @@ import (
 
 func main() {
 	// Setup database connection
-	db, err := databases.ConnectToDatabase()
-	if err != nil {
-		log.Fatal("Error setting up database:", err)
-	}
-	defer db.Close()
+	databases.ConnectToDb()
 
 
 	// Create a new Fiber app
