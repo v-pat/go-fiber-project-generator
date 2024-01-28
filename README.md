@@ -10,7 +10,7 @@ go-fiber-project-generator is a template-based code generator for creating simpl
 
 ## Features
 
-- Quickly generate a Go Fiber backend application with MySQL integration.
+- Quickly generate and download a Go Fiber backend application with MySQL integration.
 - Customizable template structure to fit your project needs.
 - Generates boilerplate code for models, routes, middleware, and database configurations.
 
@@ -74,5 +74,5 @@ go-fiber-project-generator is a template-based code generator for creating simpl
 
 - Please note that the values given in front of column names, will be used to only determine type of column and will not be added in database as first row of table. 
 
-- Upon getting success response, code for your backend will be generated in ```generated``` folder. Make sure to delete all files in generated folder before generating code again.
+- Thats it!! you can now get basic backend ready in few second. Enjoy coding 👍
 
