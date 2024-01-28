@@ -74,5 +74,7 @@ go-fiber-project-generator is a template-based code generator for creating simpl
 
 - Please note that the values given in front of column names, will be used to only determine type of column and will not be added in database as first row of table. 
 
+- Before running downloaded code, make sure you have mysql running and you should have a database of name of ```appName```.
+  
 - Thats it!! you can now get basic backend ready in few second. Enjoy coding 👍
 
