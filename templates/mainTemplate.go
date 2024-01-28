@@ -25,7 +25,7 @@ func main() {
 	routes.Routes(app)
 
 	// Start the server
-	port := 3000 // Change this to your desired port
+	port := 8080 // Change this to your desired port
 	log.Fatal(app.Listen(fmt.Sprintf(":%d", port)))
 }
 
