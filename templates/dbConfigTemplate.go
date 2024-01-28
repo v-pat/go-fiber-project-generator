@@ -5,7 +5,11 @@ package databases
 
 import (
 	"fmt"
+	{{if eq .DatabaseDriverName "postgres"}}
+	"gorm.io/driver/postgres"
+	{{else}}
     "gorm.io/driver/mysql"
+	{{end}}
     "gorm.io/gorm"
 	"{{.AppName}}/model"
 
@@ -30,7 +34,7 @@ func ConnectToDb() {
 
     var err error
 
-    Database, err = gorm.Open(mysql.Open(dbURL), &gorm.Config{
+    Database, err = gorm.Open({{.DatabaseDriverName}}.Open(dbURL), &gorm.Config{
         SkipDefaultTransaction: true,
         PrepareStmt:            true,
     })

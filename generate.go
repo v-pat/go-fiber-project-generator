@@ -32,7 +32,17 @@ func main() {
 
 		database := c.Query("database")
 
-		err := GenerateApplicationCode(appJson, database)
+		if database == "" {
+			database = "mysql"
+		}
+
+		lang := c.Query("language")
+
+		if lang == "" {
+			lang = "go"
+		}
+
+		err := GenerateApplicationCode(appJson, database, lang)
 
 		if err != nil {
 			fmt.Println("Unable to generate application code : " + err.Error())
@@ -226,7 +236,7 @@ func CreateServices(structDefs []model.StructDefinition, database string, appNam
 	return nil, nil
 }
 
-func GenerateApplicationCode(appJson model.AppJson, database string) error {
+func GenerateApplicationCode(appJson model.AppJson, database string, lang string) error {
 	// Parse the incoming JSON data as a StructDefinition
 	var structDefs []model.StructDefinition
 
