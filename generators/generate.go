@@ -107,58 +107,33 @@ func createFiles(name string, dirPath string) {
 }
 
 func updateModFile() error {
-	modFile, err := os.OpenFile("generated/go.mod", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-
-	if err != nil {
-		fmt.Println("Could not open go.mod")
-		return err
-	}
-
-	defer modFile.Close()
-
-	_, err2 := modFile.WriteString(`
-require (
-	github.com/gofiber/fiber/v2 v2.49.2
-	golang.org/x/text v0.8.0
-)
-		
-require (
-	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/go-sql-driver/mysql v1.7.1
-	github.com/google/uuid v1.3.1 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.50.0 // indirect
-	github.com/valyala/tcplisten v1.0.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
-	gorm.io/driver/mysql v1.5.2
-	gorm.io/gorm v1.25.6
-	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/jinzhu/now v1.1.5 // indirect
-)`)
-
-	if err2 != nil {
-		fmt.Println("Could not write text to go.mod")
-		return err2
-	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	initCommand := exec.Command("go", "mod", "tidy")
+	importCommand := exec.Command("goimports", "-l", "-w", ".")
 
-	initCommand.Dir = "./generated/"
-	initCommand.Stdin = os.Stdin
-	initCommand.Stdout = &stdout
-	initCommand.Stderr = &stderr
+	importCommand.Dir = "./generated/"
+	importCommand.Stdin = os.Stdin
+	importCommand.Stdout = &stdout
+	importCommand.Stderr = &stderr
 
-	err = initCommand.Run()
+	err := importCommand.Run()
 	if err != nil {
-		fmt.Println("Go mod tidy failed:" + err.Error())
+		fmt.Println("Goimports failed:" + err.Error())
+		return err
+	}
+
+	getCommand := exec.Command("go", "get", "-u")
+
+	getCommand.Dir = "./generated/"
+	getCommand.Stdin = os.Stdin
+	getCommand.Stdout = &stdout
+	getCommand.Stderr = &stderr
+
+	err = getCommand.Run()
+	if err != nil {
+		fmt.Println("go get failed:" + err.Error())
 		return err
 	}
 

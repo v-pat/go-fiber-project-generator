@@ -63,5 +63,7 @@ func CmdHandler() model.Errors {
 		}
 	}
 
+	//call this function
+	//generator.Generate()
 	return model.NewErr("", fiber.StatusOK)
 }
