@@ -11,9 +11,12 @@ import (
 	"vpat_codegen/server"
 
 	"github.com/gofiber/fiber/v2"
+
+	"github.com/spf13/viper"
 )
 
 func main() {
+	SetEnvVariables()
 	server.Serve()
 	// CmdHandler()
 }
@@ -66,4 +69,16 @@ func CmdHandler() model.Errors {
 	//call this function
 	//generator.Generate()
 	return model.NewErr("", fiber.StatusOK)
+}
+
+func SetEnvVariables() {
+	viper.SetConfigFile("config.json")
+	viper.SetConfigType("json")
+	viper.AddConfigPath(".")
+	viper.AutomaticEnv()
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 }
