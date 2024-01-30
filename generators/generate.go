@@ -1,4 +1,4 @@
-package main
+package generators
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	generator "vpat_codegen/generators"
 	"vpat_codegen/model"
 
 	"archive/zip"
@@ -19,77 +18,33 @@ import (
 	"golang.org/x/text/language"
 )
 
-func main() {
-	app := fiber.New()
+func Generate(appJson model.AppJson, dirPath string) (string, model.Errors) {
 
-	// API endpoint to receive StructDefinition with BodyParser and Database with QueryParser
-	app.Post("/generate", func(c *fiber.Ctx) error {
+	err := GenerateApplicationCode(appJson, appJson.Database, appJson.Language, dirPath)
 
-		var appJson model.AppJson
-		if err := c.BodyParser(&appJson); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON"})
-		}
+	if err != nil {
+		fmt.Println("Unable to generate application code : " + err.Error())
+		return "", model.NewErr("Unable to generate application code : "+err.Error(), fiber.StatusInternalServerError)
+	}
 
-		database := c.Query("database")
+	zipFile, err := CreateApplicationZip(appJson.AppName)
 
-		if database == "" {
-			database = "mysql"
-		}
+	if err != nil {
+		fmt.Println("Unable to zip application code  : " + err.Error())
+		return "", model.NewErr("Unable to zip application code  : "+err.Error(), fiber.StatusInternalServerError)
+	}
 
-		lang := c.Query("language")
+	err = os.RemoveAll("./generated")
+	if err != nil {
+		fmt.Println("Unable to clean generated directory  : " + err.Error())
+		return "", model.NewErr("Unable to clean generated directory  : "+err.Error(), fiber.StatusInternalServerError)
+	}
 
-		if lang == "" {
-			lang = "go"
-		}
-
-		err := GenerateApplicationCode(appJson, database, lang)
-
-		if err != nil {
-			fmt.Println("Unable to generate application code : " + err.Error())
-			return c.Status(fiber.StatusInternalServerError).SendString("Unable to generate application code : " + err.Error())
-		}
-
-		zipFile, err := CreateApplicationZip(appJson.AppName)
-
-		if err != nil {
-			fmt.Println("Unable to zip application code  : " + err.Error())
-			return c.Status(fiber.StatusInternalServerError).SendString("Unable to zip application code  : " + err.Error())
-		}
-
-		err = os.RemoveAll("./generated")
-		if err != nil {
-			fmt.Println("Unable to clean generated directory  : " + err.Error())
-			return c.Status(fiber.StatusInternalServerError).SendString("Unable to clean generated directory  : " + err.Error())
-		}
-
-		// Set appropriate headers for download
-		c.Set("Content-Disposition", "attachment; filename="+appJson.AppName+".zip")
-		c.Set("Content-Type", "application/zip")
-
-		file, err := os.ReadFile(zipFile)
-		if err != nil {
-			fmt.Println("Unable to read generated zip file  : " + err.Error())
-			return c.Status(fiber.StatusInternalServerError).SendString("Unable to read generated zip file  : " + err.Error())
-		}
-
-		// Send the zip file as response
-		c.Response().SetBodyRaw(file)
-
-		err = os.Remove(zipFile)
-		if err != nil {
-			fmt.Println("Unable to delete generated zip file  : " + err.Error())
-		}
-
-		return c.SendStatus(fiber.StatusOK)
-
-	})
-
-	// Start the Fiber server on port 3000
-	app.Listen(":3000")
+	return zipFile, model.NewErr("Code Generated Successfull.", fiber.StatusOK)
 }
 
-func createFiles(name string) {
-	err := os.MkdirAll("./generated", os.ModeDir)
+func createFiles(name string, dirPath string) {
+	err := os.MkdirAll(dirPath, os.ModeDir)
 
 	if err != nil {
 		panic("Unable to create generated dir")
@@ -100,7 +55,7 @@ func createFiles(name string) {
 
 	initCommand := exec.Command("go", "mod", "init", name)
 
-	initCommand.Dir = "./generated/"
+	initCommand.Dir = dirPath + "/"
 	initCommand.Stdin = os.Stdin
 	initCommand.Stdout = &stdout
 	initCommand.Stderr = &stderr
@@ -213,21 +168,21 @@ require (
 func CreateServices(structDefs []model.StructDefinition, database string, appName string) (fiber.Map, error) {
 	for _, structDef := range structDefs {
 		// Generate Go struct definition
-		structCode, err := generator.GenerateStructFromJSON(structDef.JSONExample, structDef.StructName)
+		structCode, err := GenerateStructFromJSON(structDef.JSONExample, structDef.StructName)
 		if err != nil {
 			return fiber.Map{"error": "Failed to generate struct"}, err
 		}
 
 		// Generate CRUD methods and save in service package
 		serviceFileName := fmt.Sprintf("generated/service/%s_service.go", strings.ToLower(structDef.StructName))
-		if err := generator.GenerateServiceFile(serviceFileName, structDef, structCode, database, appName); err != nil {
+		if err := GenerateServiceFile(serviceFileName, structDef, structCode, database, appName); err != nil {
 			fmt.Sprintln(err.Error())
 			return fiber.Map{"error": "Failed to generate service file"}, err
 		}
 
 		// Generate controller methods and save in controller package
 		controllerFileName := fmt.Sprintf("generated/controller/%s_controller.go", strings.ToLower(structDef.StructName))
-		if err := generator.GenerateControllerFile(controllerFileName, structDef, appName); err != nil {
+		if err := GenerateControllerFile(controllerFileName, structDef, appName); err != nil {
 			return fiber.Map{"error": "Failed to generate controller file"}, err
 		}
 
@@ -236,7 +191,7 @@ func CreateServices(structDefs []model.StructDefinition, database string, appNam
 	return nil, nil
 }
 
-func GenerateApplicationCode(appJson model.AppJson, database string, lang string) error {
+func GenerateApplicationCode(appJson model.AppJson, database string, lang string, dirPath string) error {
 	// Parse the incoming JSON data as a StructDefinition
 	var structDefs []model.StructDefinition
 
@@ -248,9 +203,9 @@ func GenerateApplicationCode(appJson model.AppJson, database string, lang string
 		return errors.New("Only supported databases are mysql and postgres.")
 	}
 
-	createFiles(appJson.AppName)
+	createFiles(appJson.AppName, dirPath)
 
-	err := generator.CreateDatabase(database, cases.Title(language.English).String(appJson.AppName), structDefs, appJson.AppName)
+	err := CreateDatabase(database, cases.Title(language.English).String(appJson.AppName), structDefs, appJson.AppName)
 	if err != nil {
 		panic("Unabel to create and connect to database")
 	}
@@ -263,13 +218,13 @@ func GenerateApplicationCode(appJson model.AppJson, database string, lang string
 	}
 
 	// Update routes.go to define API endpoints
-	err = generator.UpdateRoutesFile(structDefs, database, appJson.AppName)
+	err = UpdateRoutesFile(structDefs, database, appJson.AppName)
 	if err != nil {
 		fmt.Println("Unabel to generate routes : " + err.Error())
 		return err
 	}
 
-	err = generator.CreateMainFile(structDefs, database, appJson.AppName)
+	err = CreateMainFile(structDefs, database, appJson.AppName)
 	if err != nil {
 		fmt.Println("Unabel to generate main.go : " + err.Error())
 		return err
