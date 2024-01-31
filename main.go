@@ -7,30 +7,28 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"vpat_codegen/generators"
 	"vpat_codegen/model"
 	"vpat_codegen/server"
 
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func main() {
 	SetEnvVariables()
-	server.Serve()
-	// CmdHandler()
+	err := rootCmd.Execute()
+	if err != nil {
+		panic(err)
+	}
 }
 
-func CmdHandler() model.Errors {
-	// Check if the command matches "vpat gen config <fileName>"
-	args := os.Args[1:]
-	if len(args) != 4 || args[0] != "vpat" || args[1] != "gen" || args[2] != "config" {
-		fmt.Println("Usage: vpat gen config <fileName>")
-		return model.NewErr("Usage: vpat gen config <fileName>", fiber.StatusBadRequest)
-	}
+func CmdHandler(args []string) model.Errors {
 
 	// Get the file name from the command-line arguments
-	fileName := args[3]
+	fileName := args[1]
 
 	// Check the file extension
 	fileExt := strings.ToLower(strings.TrimPrefix(filepath.Ext(fileName), "."))
@@ -66,8 +64,14 @@ func CmdHandler() model.Errors {
 		}
 	}
 
+	dirPath := viper.Get("dirPath").(string)
+
 	//call this function
-	//generator.Generate()
+	_, err1 := generators.Generate(appJson, dirPath, true)
+	if err1.ErrCode != 200 {
+		fmt.Println(err1.Message)
+		return err1
+	}
 	return model.NewErr("", fiber.StatusOK)
 }
 
@@ -82,4 +86,23 @@ func SetEnvVariables() {
 		panic(err)
 	}
 
+}
+
+var rootCmd = &cobra.Command{
+	Use:   "generate",
+	Short: "generate - a CLI to generate a simple go fiber project",
+	Long:  "generate - takes configuration from a json or text file and generate code accordingly",
+	Run: func(cmd *cobra.Command, args []string) {
+		Execute(args)
+	},
+}
+
+func Execute(args []string) {
+	if len(args) == 0 {
+		server.Serve()
+	} else if len(args) == 2 && args[0] == "generate" {
+		CmdHandler(args)
+	} else {
+		fmt.Println("Allowed command is : generate <config_file>")
+	}
 }

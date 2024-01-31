@@ -18,7 +18,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func Generate(appJson model.AppJson, dirPath string) (string, model.Errors) {
+func Generate(appJson model.AppJson, dirPath string, calledFromTerminal bool) (string, model.Errors) {
 
 	err := GenerateApplicationCode(appJson, appJson.Database, dirPath)
 
@@ -34,10 +34,20 @@ func Generate(appJson model.AppJson, dirPath string) (string, model.Errors) {
 		return "", model.NewErr("Unable to zip application code  : "+err.Error(), fiber.StatusInternalServerError)
 	}
 
-	err = os.RemoveAll("./generated")
+	err = os.RemoveAll(dirPath)
 	if err != nil {
 		fmt.Println("Unable to clean generated directory  : " + err.Error())
 		return "", model.NewErr("Unable to clean generated directory  : "+err.Error(), fiber.StatusInternalServerError)
+	}
+
+	if calledFromTerminal {
+		file, err := os.Create("./" + zipFile)
+
+		if err != nil {
+			panic("Unable to create zip file upon called from terminal")
+		}
+
+		defer file.Close()
 	}
 
 	return zipFile, model.NewErr("Code Generated Successfull.", fiber.StatusOK)

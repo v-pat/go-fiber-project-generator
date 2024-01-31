@@ -25,7 +25,7 @@ func Handler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON"})
 	}
 
-	zipFile, errs := generator.Generate(appJson, "./generated")
+	zipFile, errs := generator.Generate(appJson, "./generated", false)
 
 	if errs.ErrCode != fiber.StatusOK {
 		fmt.Println(errs.Message)
