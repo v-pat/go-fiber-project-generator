@@ -7,6 +7,7 @@ import (
 	"vpat_codegen/model"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/spf13/viper"
 )
 
 func Serve() {
@@ -25,7 +26,9 @@ func Handler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON"})
 	}
 
-	zipFile, errs := generator.Generate(appJson, "./generated", false)
+	dirPath := viper.Get("dirPath").(string)
+
+	zipFile, errs := generator.Generate(appJson, dirPath)
 
 	if errs.ErrCode != fiber.StatusOK {
 		fmt.Println(errs.Message)

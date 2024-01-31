@@ -9,16 +9,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	generationstatus "vpat_codegen/generation_status"
 	"vpat_codegen/model"
+	"vpat_codegen/utils"
 
 	"archive/zip"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
-func Generate(appJson model.AppJson, dirPath string, calledFromTerminal bool) (string, model.Errors) {
+func Generate(appJson model.AppJson, dirPath string) (string, model.Errors) {
 
 	err := GenerateApplicationCode(appJson, appJson.Database, dirPath)
 
@@ -26,6 +29,8 @@ func Generate(appJson model.AppJson, dirPath string, calledFromTerminal bool) (s
 		fmt.Println("Unable to generate application code : " + err.Error())
 		return "", model.NewErr("Unable to generate application code : "+err.Error(), fiber.StatusInternalServerError)
 	}
+
+	generationstatus.UpdateGenerationStatus(utils.ZIP_GEN_START)
 
 	zipFile, err := CreateApplicationZip(appJson.AppName)
 
@@ -38,16 +43,6 @@ func Generate(appJson model.AppJson, dirPath string, calledFromTerminal bool) (s
 	if err != nil {
 		fmt.Println("Unable to clean generated directory  : " + err.Error())
 		return "", model.NewErr("Unable to clean generated directory  : "+err.Error(), fiber.StatusInternalServerError)
-	}
-
-	if calledFromTerminal {
-		file, err := os.Create("./" + zipFile)
-
-		if err != nil {
-			panic("Unable to create zip file upon called from terminal")
-		}
-
-		defer file.Close()
 	}
 
 	return zipFile, model.NewErr("Code Generated Successfull.", fiber.StatusOK)
@@ -190,16 +185,22 @@ func GenerateApplicationCode(appJson model.AppJson, database string, dirPath str
 
 	createFiles(appJson.AppName, dirPath)
 
+	generationstatus.UpdateGenerationStatus(utils.ENVCONFIG_GEN_START)
+
 	err := CreateConfigJsonFile(appJson.AppName)
 	if err != nil {
 		fmt.Println("Unabel to generate config.json : " + err.Error())
 		return err
 	}
 
+	generationstatus.UpdateGenerationStatus(utils.DB_GEN_START)
+
 	err = CreateDatabase(database, cases.Title(language.English).String(appJson.AppName), structDefs, appJson.AppName)
 	if err != nil {
 		panic("Unabel to create and connect to database")
 	}
+
+	generationstatus.UpdateGenerationStatus(utils.SERVICE_GEN_START)
 
 	//creates model,controlles and service files
 	_, err = CreateServices(structDefs, database, appJson.AppName)
@@ -208,6 +209,8 @@ func GenerateApplicationCode(appJson model.AppJson, database string, dirPath str
 		return err
 	}
 
+	generationstatus.UpdateGenerationStatus(utils.ROUTES_GEN_START)
+
 	// Update routes.go to define API endpoints
 	err = UpdateRoutesFile(structDefs, database, appJson.AppName)
 	if err != nil {
@@ -215,24 +218,27 @@ func GenerateApplicationCode(appJson model.AppJson, database string, dirPath str
 		return err
 	}
 
+	generationstatus.UpdateGenerationStatus(utils.MAIN_GEN_START)
+
 	err = CreateMainFile(structDefs, database, appJson.AppName)
 	if err != nil {
 		fmt.Println("Unabel to generate main.go : " + err.Error())
 		return err
 	}
 
+	generationstatus.UpdateGenerationStatus(utils.PACKAGE_IMPORT_START)
+
 	err = updateModFile()
 
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Code generation completed.")
 	return nil
 }
 
 func CreateApplicationZip(appName string) (string, error) {
 	// Directory to zip
-	dirToZip := "./generated"
+	dirToZip := viper.Get("dirPath").(string)
 
 	// Create a temporary zip file
 	zipFile := appName + ".zip"

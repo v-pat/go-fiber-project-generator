@@ -92,8 +92,5 @@ func CreateDatabase(database string, dbName string, structDefs []model.StructDef
 		}
 
 	}
-
-	fmt.Println("Database connection code generated and written to files successfully.")
-
 	return nil
 }

@@ -3,16 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"os"
 	"path/filepath"
 	"strings"
+	generationstatus "vpat_codegen/generation_status"
 	"vpat_codegen/generators"
 	"vpat_codegen/model"
 	"vpat_codegen/server"
 
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -67,7 +70,7 @@ func CmdHandler(args []string) model.Errors {
 	dirPath := viper.Get("dirPath").(string)
 
 	//call this function
-	_, err1 := generators.Generate(appJson, dirPath, true)
+	_, err1 := generators.Generate(appJson, dirPath)
 	if err1.ErrCode != 200 {
 		fmt.Println(err1.Message)
 		return err1
@@ -101,7 +104,14 @@ func Execute(args []string) {
 	if len(args) == 0 {
 		server.Serve()
 	} else if len(args) == 2 && args[0] == "generate" {
-		CmdHandler(args)
+		s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+		generationstatus.Spinner = s
+		s.Start()
+		err := CmdHandler(args)
+		s.Stop()
+		if err.ErrCode != 200 {
+			fmt.Println(err.Message)
+		}
 	} else {
 		fmt.Println("Allowed command is : generate <config_file>")
 	}
