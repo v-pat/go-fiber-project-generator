@@ -21,16 +21,10 @@ var  Database *gorm.DB
 
 
 func ConnectToDb() {
-
-	// Define the database connection parameters
-	dbHost := "{{.DBHost}}"
-	dbPort := "{{.DBPort}}"
-	dbName := "{{.DBName}}"
-	dbUser := "{{.DBUser}}"
-	dbPassword := "{{.DBPassword}}"
 	
 	// Construct the database connection URL
-	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", dbUser, dbPassword, dbHost, dbPort, dbName,"charset=utf8mb4&parseTime=True")
+	dbURL := viper.Get("Database").(string)
+
 
     var err error
 

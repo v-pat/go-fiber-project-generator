@@ -5,6 +5,9 @@ import (
 	"text/template"
 	"vpat_codegen/model"
 	tmpl "vpat_codegen/templates"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func UpdateRoutesFile(structDefs []model.StructDefinition, database string, appName string) error {
@@ -26,6 +29,7 @@ func UpdateRoutesFile(structDefs []model.StructDefinition, database string, appN
 	// Define data for the template
 	type structname struct {
 		StructName string
+		Endpoint   string
 	}
 
 	type dataType struct {
@@ -36,7 +40,7 @@ func UpdateRoutesFile(structDefs []model.StructDefinition, database string, appN
 	names := []structname{}
 
 	for _, structDef := range structDefs {
-		names = append(names, structname{StructName: structDef.StructName})
+		names = append(names, structname{StructName: structDef.StructName, Endpoint: cases.Lower(language.English).String(structDef.StructName)})
 	}
 
 	data.StructNames = names

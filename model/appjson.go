@@ -4,7 +4,7 @@ type AppJson struct {
 	AppName  string             `json:"appName"`
 	Tables   []StructDefinition `json:"tables"`
 	Database string             `json:"database"`
-	Language string             `json:"language"`
+	// Language string             `json:"language"`
 }
 
 // StructDefinition represents the data required for generating CRUD methods.

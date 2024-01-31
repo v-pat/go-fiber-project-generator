@@ -12,7 +12,7 @@ import (
 func Routes(app *fiber.App) {
 	{{range  .StructNames}}
     // Define routes for {{.StructName}} resource
-    {{.StructName}}_group := app.Group("/{{.StructName}}")
+    {{.StructName}}_group := app.Group("/{{.Endpoint}}")
 
     // Create a {{.StructName}}
     {{.StructName}}_group.Post("/", controller.Create{{.StructName}})

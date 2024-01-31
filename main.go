@@ -81,4 +81,5 @@ func SetEnvVariables() {
 	if err != nil {
 		panic(err)
 	}
+
 }

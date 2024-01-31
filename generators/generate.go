@@ -20,7 +20,7 @@ import (
 
 func Generate(appJson model.AppJson, dirPath string) (string, model.Errors) {
 
-	err := GenerateApplicationCode(appJson, appJson.Database, appJson.Language, dirPath)
+	err := GenerateApplicationCode(appJson, appJson.Database, dirPath)
 
 	if err != nil {
 		fmt.Println("Unable to generate application code : " + err.Error())
@@ -166,7 +166,7 @@ func CreateServices(structDefs []model.StructDefinition, database string, appNam
 	return nil, nil
 }
 
-func GenerateApplicationCode(appJson model.AppJson, database string, lang string, dirPath string) error {
+func GenerateApplicationCode(appJson model.AppJson, database string, dirPath string) error {
 	// Parse the incoming JSON data as a StructDefinition
 	var structDefs []model.StructDefinition
 
@@ -180,7 +180,13 @@ func GenerateApplicationCode(appJson model.AppJson, database string, lang string
 
 	createFiles(appJson.AppName, dirPath)
 
-	err := CreateDatabase(database, cases.Title(language.English).String(appJson.AppName), structDefs, appJson.AppName)
+	err := CreateConfigJsonFile(appJson.AppName)
+	if err != nil {
+		fmt.Println("Unabel to generate config.json : " + err.Error())
+		return err
+	}
+
+	err = CreateDatabase(database, cases.Title(language.English).String(appJson.AppName), structDefs, appJson.AppName)
 	if err != nil {
 		panic("Unabel to create and connect to database")
 	}
